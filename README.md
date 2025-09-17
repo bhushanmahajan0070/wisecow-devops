@@ -2,7 +2,7 @@
 
 A complete containerization and deployment solution for the Wisecow application with automated CI/CD pipeline and TLS security.
 
-![Wisecow Logo](https://raw.githubusercontent.com/nyrahul/wisecow/main/wisecow-logo.png)
+![Wisecow Logo](wisecow.png)
 
 ---
 
