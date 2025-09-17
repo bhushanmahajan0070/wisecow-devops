@@ -1,147 +1,179 @@
-# Wisecow
+# Wisecow DevOps Assessment
 
-Cow Wisdom Web Server - A simple web server that serves random cow quotes using fortune and cowsay commands.
+A complete containerization and deployment solution for the Wisecow application with automated CI/CD pipeline and TLS security.
 
 ![Wisecow Logo](https://raw.githubusercontent.com/nyrahul/wisecow/main/wisecow-logo.png)
 
 ---
 
 ## Table of Contents
-
 - [About](#about)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
+- [Quick Start](#quick-start)
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [CI/CD Pipeline](#cicd-pipeline)
-- [TLS/SSL Support](#tlsssl-support)
+- [TLS/HTTPS Support](#tlshttps-support)
+- [Verification Results](#verification-results)
 - [Scripts for Monitoring](#scripts-for-monitoring)
-- [Contributing](#contributing)
 - [License](#license)
-- [Credits](#credits)
-- [Contact](#contact)
 
 ---
 
 ## About
 
-Wisecow is a lightweight web server built on Debian using `fortune-mod` and `cowsay` to display fun and inspirational cow wisdom messages. It is containerized with Docker and deployable on Kubernetes clusters. This project includes Kubernetes manifests, TLS implementation, and GitHub Actions CI/CD pipelines for fully automated build and deployment.
+Wisecow is a lightweight web server that displays inspirational cow wisdom using `fortune` and `cowsay` commands. This project demonstrates complete DevOps practices including containerization, Kubernetes deployment, automated CI/CD, and secure HTTPS communication.
 
 ---
 
 ## Features
 
-- Dockerized Wisecow web application
-- Kubernetes manifests for deployment and service exposure
-- TLS/SSL support for secure communication
-- GitHub Actions workflow to automate build, push, and deploy
-- Monitoring scripts for system and application health
+- **Containerized Application**: Dockerized Wisecow web server
+- **Kubernetes Ready**: Complete K8s manifests for deployment, service, and ingress
+- **Automated CI/CD**: GitHub Actions workflow for build and push
+- **TLS Security**: HTTPS support with self-signed certificates
+- **Health Monitoring**: System and application monitoring scripts
+- **Production Ready**: Namespace isolation and proper resource management
 
 ---
 
 ## Prerequisites
 
-Before running the project, ensure you have:
-
-- Docker installed on your machine
-- Kubernetes cluster ready (Minikube, Kind, or any cloud provider)
-- kubectl CLI configured to interact with your Kubernetes cluster
-- GitHub account and Docker Hub (or other container registry) account
+- Docker installed
+- Kubernetes cluster (Minikube recommended for local development)
+- kubectl CLI configured
+- GitHub account with Docker Hub credentials
 
 ---
 
-## Installation
+## Quick Start
 
-1. Clone the repository:
+### 1. Local Development
+git clone https://github.com/bhushanmahajan0070/wisecow-devops.git
+cd wisecow-devops
 
-git clone https://github.com/bhushanmahajan0070/wisecow.git
-cd wisecow
+Build and run locally
+docker build -t wisecow-app:latest .
+docker run -p 3000:3000 wisecow-app:latest
 
-
-2. Build the Docker image locally:
-
-docker build -t wisecow:local .
-
-
-3. Run the container locally:
-   
-docker run -p 4499:4499 wisecow:local
+Test the application
+curl http://localhost:3000
 
 
-4. Test the application:
+### 2. Kubernetes Deployment
+Start Minikube cluster
+minikube start
 
-curl http://localhost:4499
+Deploy to Kubernetes
+kubectl apply -f k8s/
 
+Check deployment status
+kubectl get pods -n wisecow -w
 
----
-
-## Kubernetes Deployment
-
-1. Modify `k8s/deployment.yaml` to update the image name to your pushed Docker image:
-
-image: YOUR_DOCKERHUB_USERNAME/wisecow:latest
-
-2. Apply Kubernetes manifests:
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/ingress.yaml # if using ingress and TLS
+Test the service
+URL=$(minikube service wisecow-service -n wisecow --url)
+curl -i $URL
 
 
-3. Verify pods are running:
-kubectl get pods -n wisecow
+### 3. Enable HTTPS/TLS
+Enable Ingress controller
+minikube addons enable ingress
 
+Create TLS secret
+kubectl create secret tls wisecow-tls
+--key tls.key --cert tls.crt
+-n wisecow --dry-run=client -o yaml | kubectl apply -f -
 
-4. Port-forward to access Wisecow service locally:
+Apply Ingress
+kubectl apply -f k8s/ingress.yaml -n wisecow
 
-kubectl port-forward -n wisecow service/wisecow-service 8080:4499
-curl http://localhost:8080
+Map hostname and test HTTPS
+echo "$(minikube ip) wisecow.local" | sudo tee -a /etc/hosts
+curl -kI https://wisecow.local/
+
 
 ---
 
 ## CI/CD Pipeline
 
-This project includes a GitHub Actions workflow (`.github/workflows/ci-cd.yml`) that:
+The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) automatically:
 
-- Builds the Docker image on code push
-- Pushes the image to Docker Hub
-- Automatically deploys updated image to Kubernetes cluster
+1. **Builds** Docker image on every push to main
+2. **Pushes** to Docker Hub with latest tag  
+3. **Enables** continuous deployment to Kubernetes
 
-Make sure to add the following repository secrets in your GitHub repo for successful runs:
-
-- `DOCKER_USERNAME`
-- `DOCKER_PASSWORD` (Docker Hub personal access token)
-- `KUBECONFIG` (optional for deploying from GitHub Actions directly)
+### Required GitHub Secrets:
+- `DOCKERHUB_USERNAME`: Your Docker Hub username
+- `DOCKERHUB_TOKEN`: Docker Hub access token
 
 ---
 
-## TLS/SSL Support
+## TLS/HTTPS Support
 
-Secure communication is enabled using self-signed TLS certificates and Kubernetes ingress. To generate and apply TLS:
+Secure HTTPS communication is implemented using:
+- Self-signed TLS certificates (tls.crt, tls.key)
+- Kubernetes TLS secret for certificate storage
+- Nginx Ingress Controller for TLS termination
+- Custom domain mapping (wisecow.local)
 
-1. Generate self-signed cert and key
-2. Create Kubernetes TLS secret
-3. Configure ingress resource with TLS references
+---
 
-Access the app securely via your configured domain or IP.
+## Verification Results
+
+### Service Test (HTTP via NodePort)
+![Service returning HTTP 200](docs/service-200.png)
+
+**Command used:**
+URL=$(minikube service wisecow-service -n wisecow --url)
+curl -i $URL
+**Result:** HTTP/1.1 200 OK with full Wisecow application response
+
+### HTTPS Test (TLS via Ingress)  
+![HTTPS returning HTTP/2 200](docs/https-200.png)
+
+**Command used:**
+curl -kI https://wisecow.local/
+
+**Result:** HTTP/2 200 OK confirming secure TLS connection
 
 ---
 
 ## Scripts for Monitoring
 
-Included are two example monitoring scripts:
+The `scripts/` directory contains monitoring utilities:
 
-- **System Health Monitoring** (`system_health_monitor.py`) — monitors CPU, memory, disk, and running processes and logs alerts.
-- **Application Health Checker** (`app_health_checker.py`) — checks HTTP status codes to verify if an app is up or down.
+### System Health Monitor
+bash scripts/health_check.sh
+Monitors CPU, memory, disk usage and logs alerts when thresholds are exceeded.
 
-Use these scripts to integrate basic health checks in your environment.
+### Application Uptime Checker  
+python3 scripts/app_uptime_check.py https://wisecow.local
+
+Performs HTTP health checks and reports application availability.
 
 ---
 
-## Contributing
+## Project Structure
+wisecow-devops/
+├── Dockerfile # Container build instructions
+├── wisecow.sh # Main application script
+├── k8s/ # Kubernetes manifests
+│ ├── namespace.yaml
+│ ├── deployment.yaml
+│ ├── service.yaml
+│ └── ingress.yaml
+├── .github/workflows/ # CI/CD pipeline
+│ └── ci-cd.yml
+├── scripts/ # Monitoring scripts
+│ ├── health_check.sh
+│ └── app_uptime_check.py
+├── docs/ # Documentation and proof
+│ ├── service-200.png
+│ └── https-200.png
+├── tls.crt # TLS certificate
+├── tls.key # TLS private key
+└── README.md # This file
 
-Feel free to fork this repository, make improvements, and submit pull requests. Please adhere to standard GitHub etiquette.
 
 ---
 
@@ -159,7 +191,6 @@ Thanks to [@nyrahul](https://github.com/nyrahul) for the original Wisecow applic
 
 ## Contact
 
-For questions or help, open an issue or contact mahajanbhushan2005@gmail.com.
-
+For questions or support, please open an issue or contact [mahajanbhushan2005@gmail.com](mailto:mahajanbhushan2005@gmail.com).
 
 
